@@ -243,6 +243,10 @@ function renderHome(params) {
     html += '</div>';
   }
   html += `<button class="btn-wide" id="btn-new-col">＋ Nouvelle collection</button>`;
+  html += `<div class="backup-row">
+    <button class="tool" id="btn-export">💾 Sauvegarder / transférer</button>
+    <button class="tool" id="btn-import">📥 Restaurer</button>
+  </div>`;
   if (!isStandalone()) html += `<button class="hint" id="btn-install">📲 Installer sur l'écran d'accueil de l'iPhone</button>`;
   $('#view').innerHTML = html;
 
@@ -250,6 +254,8 @@ function renderHome(params) {
   input.oninput = () => { renderSearch(input.value); history.replaceState(null, '', input.value ? `#/?q=${encodeURIComponent(input.value)}` : '#/'); };
   if (q) renderSearch(q);
   $('#btn-new-col').onclick = () => editCollection(null);
+  $('#btn-export').onclick = exportBackup;
+  $('#btn-import').onclick = importBackup;
   if ($('#btn-install')) $('#btn-install').onclick = showInstallHelp;
 }
 
@@ -603,7 +609,7 @@ function openMenu() {
       <button data-act="new">＋ Nouvelle collection</button>
       <button data-act="visible">👁 Extensions affichées</button>
       <button data-act="images">🖼 Images des cartes : ${state.prefs.images ? 'affichées' : 'masquées'}</button>
-      <button data-act="export">💾 Sauvegarder ma collection</button>
+      <button data-act="export">💾 Sauvegarder / transférer ma collection</button>
       <button data-act="import">📥 Restaurer une sauvegarde</button>
       <button data-act="install">📲 Installer sur l'iPhone</button>
       <button data-act="about">ℹ️ À propos</button>
@@ -630,6 +636,8 @@ function openCollectionMenu(col) {
       <button data-act="doubles">🔁 Partager mes doubles</button>
       <button data-act="edit">✏️ Modifier la collection</button>
       <button data-act="hide">🙈 Masquer de l'accueil</button>
+      <button data-act="export">💾 Sauvegarder / transférer ma collection</button>
+      <button data-act="import">📥 Restaurer une sauvegarde</button>
     </div>`, (sheet) => {
     sheet.querySelector('.menu').onclick = (e) => {
       const act = e.target.closest('[data-act]')?.dataset.act;
@@ -640,6 +648,8 @@ function openCollectionMenu(col) {
         missing: () => shareList(col, 'missing'),
         doubles: () => shareList(col, 'doubles'),
         edit: () => editCollection(col),
+        export: exportBackup,
+        import: importBackup,
         hide: () => { col.hidden = true; save(); toast('Collection masquée (Menu → Extensions affichées pour la retrouver)'); go('#/'); },
       })[act](), 220);
     };

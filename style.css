@@ -86,6 +86,8 @@ input[type=search], .input {
   display: block; width: 100%; margin-top: 18px; padding: 14px; border: 0; border-radius: 14px;
   background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 16px;
 }
+.backup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.backup-row .tool { padding: 12px 8px; white-space: normal; }
 .hint {
   display: block; width: 100%; margin-top: 10px; padding: 12px; border-radius: 14px;
   border: 1px dashed var(--line); background: transparent; color: var(--muted);
