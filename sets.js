@@ -1,7 +1,6 @@
 // Catalogue des extensions préchargées.
 // Source : liste des extensions Wakfu TCG (Wikipédia FR, recoupée avec WTCG Return).
-// Les noms des cartes ne sont pas fournis : chaque emplacement est numéroté (001/320…),
-// le nom, la rareté et la photo se remplissent depuis l'appli (ou par import d'une liste).
+// Les noms, types et raretés des cartes sont dans cards.js (CARD_DATA, même identifiant).
 window.BUILTIN_SETS = [
   { id: 'wtcg-incarnam', game: 'Wakfu TCG', name: 'Incarnam', en: 'Incarnam',
     block: 'Bloc Incarnam', year: 2009, size: 320, publisher: 'Ankama / Upper Deck', color: '#5aa469' },
@@ -20,11 +19,15 @@ window.BUILTIN_SETS = [
   { id: 'wtcg-dofus-collection', game: 'Wakfu TCG', name: 'Dofus Collection', en: 'Dofus Collection',
     block: 'Réédition', year: 2011, size: 100, publisher: 'Ankama', color: '#c9a227' },
   { id: 'wtcg-ile-wabbits', game: 'Wakfu TCG', name: "L'Île des Wabbits", en: 'Wabbit Island',
-    block: 'Hors bloc', year: 2011, size: 30, publisher: 'Ankama', color: '#e07fa6' },
+    block: 'Hors bloc', year: 2011, size: 30, publisher: 'Ankama', color: '#e07fa6',
+    note: "La liste des cartes de cette extension n'est pas disponible : les noms se remplissent à la main." },
   { id: 'wtcg-promos', game: 'Wakfu TCG', name: 'Promos & tournois', en: 'Promos',
-    block: 'Ankama Convention, tournois, Bazar de Ruel', year: 2010, size: 5, publisher: 'Ankama', color: '#7f8c9d',
-    note: 'Le nombre de cartes promo est modifiable : ajoutez des emplacements au fur et à mesure.' },
+    block: 'Avant-premières, tournois, conventions, Bazar de Ruel', year: 2009, size: 198, publisher: 'Ankama', color: '#7f8c9d' },
+  { id: 'wtcg-jetons', game: 'Wakfu TCG', name: 'Jetons & cartes spéciales', en: 'Tokens',
+    block: 'Jetons Incarnam, jetons de draft', year: 2009, size: 12, publisher: 'Ankama', color: '#5c7a99' },
+  { id: 'wtcg-kama', game: 'Wakfu TCG', name: 'Cartes Kama (loterie)', en: 'Kama cards',
+    block: 'Cartes à gratter des boosters', year: 2009, size: 317, publisher: 'Ankama', color: '#b8893a' },
 ];
 
-window.RARITIES = ['Commune', 'Peu commune', 'Rare', 'Mythique', 'Légendaire', 'Promo'];
+window.RARITIES = ['Commune', 'Peu commune', 'Rare', 'Draconique', 'Promo'];
 window.CONDITIONS = ['Mint', 'Near Mint', 'Excellent', 'Bon état', 'Joué', 'Abîmé'];

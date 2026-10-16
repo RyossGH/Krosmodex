@@ -5,9 +5,9 @@ Pas d'App Store, pas de Mac : elle s'installe depuis Safari et fonctionne **hors
 
 ## Fonctions
 
-- **10 extensions Wakfu TCG préchargées** (1 585 emplacements numérotés) : Incarnam (320), Astrub (162), Amakna (162),
+- **Toutes les cartes Wakfu TCG préremplies** (nom, type, rareté) : Incarnam (320), Astrub (162), Amakna (162),
   Bonta & Brâkmar (320), Pandala (162), Otomaï (162), Le Chaos d'Ogrest (162), Dofus Collection (100),
-  L'Île des Wabbits (30) et Promos & tournois (taille modifiable).
+  Promos & tournois (198), Jetons & cartes spéciales (12), Cartes Kama (317). L'Île des Wabbits (30) est à remplir à la main.
 - **Collections personnalisées** pour tout le reste (Dofus, Krosmaster, autres cartes Upper Deck…) : nom, gamme, nombre de cartes.
 - **Vue classeur** (pages de 9 pochettes, balayage pour tourner les pages) ou **vue grille**.
   Cartes possédées en couleur, manquantes en pointillés.
@@ -15,13 +15,12 @@ Pas d'App Store, pas de Mac : elle s'installe depuis Safari et fonctionne **hors
   et **photo prise avec l'appareil photo** (elle remplace le dos de la pochette).
 - **Ajout rapide ⚡ +1** : un toucher = +1 exemplaire (avec « Annuler »), appui long = fiche.
 - Filtres possédées / manquantes / doubles / recherchées, recherche par numéro ou par nom (dans une extension ou partout).
-- **Import de la liste des noms** par copier-coller (`numéro ; nom ; rareté`).
+- **Import de noms** par copier-coller (`numéro ; nom ; rareté`) pour les collections personnalisées.
 - **Partage** de la liste des manquantes et des doubles (Messages, Discord…).
 - **Sauvegarde / restauration** dans un fichier `.json` (photos comprises), via le menu Partager de l'iPhone.
 
-Les noms des cartes ne sont pas fournis : aucune base ouverte n'existe pour Wakfu TCG
-(le site communautaire WTCG Return bloque l'accès automatisé). Les emplacements sont numérotés comme
-sur les cartes (`042/162`) ; on remplit les noms au fil de l'eau ou en collant une liste.
+Les noms, types et raretés viennent de l'encyclopédie Wakfu TCG de [Nokazu](https://nokazu.fr/encyclopedie/krosllection/wakfu_tcg)
+(fichier `cards.js`, généré). Un nom peut être corrigé dans la fiche de la carte, sans toucher au catalogue.
 
 ## Installation sur iPhone
 

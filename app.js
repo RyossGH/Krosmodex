@@ -44,10 +44,14 @@ function defaultState() {
 }
 
 function syncBuiltins() {
-  // ajoute les extensions du catalogue qui manquent (nouvelles versions de l'appli)
-  const known = new Set(state.collections.map((c) => c.id));
+  // ajoute les extensions du catalogue qui manquent et met à jour les autres (nouvelles versions de l'appli)
   for (const s of window.BUILTIN_SETS) {
-    if (!known.has(s.id)) state.collections.push({ ...s, builtin: true, hidden: false });
+    const col = state.collections.find((c) => c.id === s.id);
+    if (!col) { state.collections.push({ ...s, builtin: true, hidden: false }); continue; }
+    const { name, size, color } = col;
+    delete col.note;
+    Object.assign(col, s, { builtin: true, hidden: !!col.hidden, size: Math.max(size || 0, s.size) });
+    if (col.edited) Object.assign(col, { name, color });
   }
 }
 
@@ -69,6 +73,11 @@ function save() {
 const key = (colId, num) => `${colId}:${num}`;
 const card = (colId, num) => state.cards[key(colId, num)] || {};
 const getCol = (id) => state.collections.find((c) => c.id === id);
+// fiche du catalogue : [nom, type, rareté, note]
+const info = (colId, num) => ((window.CARD_DATA || {})[colId] || [])[num - 1] || [];
+const nameOf = (colId, num) => card(colId, num).name || info(colId, num)[0] || '';
+const rarityOf = (colId, num) => card(colId, num).rarity || info(colId, num)[2] || '';
+const RARITY_CLASS = { Commune: 'r-c', 'Peu commune': 'r-pc', Rare: 'r-r', Draconique: 'r-d', Promo: 'r-p' };
 
 function setCard(colId, num, patch) {
   const k = key(colId, num);
@@ -248,21 +257,24 @@ function renderSearch(q) {
   q = q.trim().toLowerCase();
   if (!q) { out.innerHTML = ''; return; }
   const hits = [];
-  for (const [k, c] of Object.entries(state.cards)) {
-    if (!c.name || !c.name.toLowerCase().includes(q)) continue;
-    const i = k.lastIndexOf(':');
-    const col = getCol(k.slice(0, i));
-    if (col) hits.push({ col, num: +k.slice(i + 1), c });
+  const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  q = norm(q);
+  for (const col of state.collections) {
+    if (col.hidden) continue;
+    for (let n = 1; n <= col.size; n++) {
+      const name = nameOf(col.id, n);
+      if (name && norm(name).includes(q)) hits.push({ col, num: n, c: { ...card(col.id, n), name } });
+    }
   }
-  hits.sort((a, b) => a.c.name.localeCompare(b.c.name));
+  hits.sort((a, b) => a.c.name.localeCompare(b.c.name, 'fr'));
   out.innerHTML = hits.length
-    ? `<div class="list">${hits.slice(0, 60).map((h) => `
-        <a class="row" href="#/c/${encodeURIComponent(h.col.id)}?n=${h.num}">
+    ? `<p class="count">${hits.length} résultat${hits.length > 1 ? 's' : ''}${hits.length > 80 ? ' (80 premiers affichés)' : ''}</p><div class="list">${hits.slice(0, 80).map((h) => `
+        <a class="row" href="#/c/${encodeURIComponent(h.col.id)}?f=all&n=${h.num}">
           <span class="row-main">${esc(h.c.name)}</span>
           <span class="row-sub">${esc(h.col.name)} · ${pad(h.num, h.col.size)}/${h.col.size}</span>
           <span class="row-qty ${h.c.qty ? 'own' : ''}">${h.c.qty ? '×' + h.c.qty : 'manquante'}</span>
         </a>`).join('')}</div>`
-    : `<p class="empty">Aucune carte nommée « ${esc(q)} ». Les noms se renseignent dans la fiche de chaque carte ou par import d'une liste.</p>`;
+    : `<p class="empty">Aucune carte ne correspond à « ${esc(q)} ».</p>`;
 }
 
 // ---------- Collection (classeur) ----------
@@ -279,7 +291,7 @@ function filteredNums(col, filter, q) {
     if (filter === 'missing' && qty) continue;
     if (filter === 'doubles' && qty < 2) continue;
     if (filter === 'wanted' && !c.want) continue;
-    if (q && !(c.name || '').toLowerCase().includes(q) && String(n) !== q && pad(n, col.size) !== q) continue;
+    if (q && !nameOf(col.id, n).toLowerCase().includes(q) && String(n) !== q && pad(n, col.size) !== q) continue;
     nums.push(n);
   }
   return nums;
@@ -334,11 +346,15 @@ function renderCollection(col, params) {
 function slotHtml(col, n, focus) {
   const c = card(col.id, n);
   const qty = c.qty || 0;
+  const name = nameOf(col.id, n);
+  const type = info(col.id, n)[1];
+  const rc = RARITY_CLASS[rarityOf(col.id, n)];
   return `
     <button class="slot ${qty ? 'own' : 'missing'} ${c.foil ? 'foil' : ''} ${focus ? 'focus' : ''}" data-num="${n}" ${c.photo ? 'data-photo="1"' : ''}>
       <span class="slot-art"></span>
       <span class="slot-num">${pad(n, col.size)}</span>
-      ${c.name ? `<span class="slot-name">${esc(c.name)}</span>` : ''}
+      ${type || rc ? `<span class="slot-type">${rc ? `<i class="gem ${rc}" title="${esc(rarityOf(col.id, n))}"></i>` : ''}${esc(type || '')}</span>` : ''}
+      ${name ? `<span class="slot-name">${esc(name)}</span>` : ''}
       ${qty > 1 ? `<span class="slot-qty">×${qty}</span>` : ''}
       ${c.want && !qty ? '<span class="slot-want">★</span>' : ''}
       ${c.foil ? '<span class="slot-foil">✦</span>' : ''}
@@ -442,6 +458,7 @@ function bindCollection() {
 
 async function openCard(col, n) {
   const c = card(col.id, n);
+  const [baseName, baseType, baseRarity, baseNote] = info(col.id, n);
   const url = c.photo ? await photoUrl(col.id, n) : null;
   const opts = (list, val) => `<option value="">—</option>${list.map((v) => `<option ${v === val ? 'selected' : ''}>${esc(v)}</option>`).join('')}`;
   openSheet(`
@@ -451,7 +468,8 @@ async function openCard(col, n) {
       </button>
       <div class="card-fields">
         <div class="card-num">${esc(col.name)} · <b>${pad(n, col.size)}/${col.size}</b></div>
-        <input id="cs-name" class="input" placeholder="Nom de la carte" value="${esc(c.name || '')}" autocomplete="off">
+        <input id="cs-name" class="input" placeholder="Nom de la carte" value="${esc(nameOf(col.id, n))}" autocomplete="off">
+        ${baseType || baseNote ? `<div class="card-info">${esc([baseType, baseRarity].filter(Boolean).join(' · '))}${baseNote ? `<br><i>${esc(baseNote)}</i>` : ''}</div>` : ''}
         <div class="stepper-row">
           <label>Exemplaires</label>
           <div class="stepper"><button data-step="qty:-1">−</button><b id="cs-qty">${c.qty || 0}</b><button data-step="qty:1">+</button></div>
@@ -463,7 +481,7 @@ async function openCard(col, n) {
       </div>
     </div>
     <div class="form-grid">
-      <label>Rareté<select id="cs-rarity" class="input">${opts(window.RARITIES, c.rarity)}</select></label>
+      <label>Rareté<select id="cs-rarity" class="input">${opts(window.RARITIES, rarityOf(col.id, n))}</select></label>
       <label>État<select id="cs-cond" class="input">${opts(window.CONDITIONS, c.cond)}</select></label>
     </div>
     <label class="check"><input type="checkbox" id="cs-want" ${c.want ? 'checked' : ''}> ★ Je la recherche</label>
@@ -475,8 +493,9 @@ async function openCard(col, n) {
     </div>
     <button class="btn-wide" id="cs-close">Terminé</button>`, (sheet) => {
     const commit = () => setCard(col.id, n, {
-      name: $('#cs-name').value.trim(),
-      rarity: $('#cs-rarity').value,
+      // on ne garde que ce qui diffère du catalogue
+      name: $('#cs-name').value.trim() === (baseName || '') ? '' : $('#cs-name').value.trim(),
+      rarity: $('#cs-rarity').value === (baseRarity || '') ? '' : $('#cs-rarity').value,
       cond: $('#cs-cond').value,
       want: $('#cs-want').checked,
       note: $('#cs-note').value.trim(),
@@ -591,6 +610,7 @@ function editCollection(col) {
       const size = Math.max(1, Math.min(5000, parseInt($('#ec-size').value, 10) || 0));
       if (!name) { toast('Donnez un nom à la collection'); return; }
       Object.assign(col, { name, game: $('#ec-game').value.trim() || 'Autre', size, year: parseInt($('#ec-year').value, 10) || '', color: $('#ec-color').value });
+      if (col.builtin) col.edited = true;
       if (isNew) { col.id = 'c' + Date.now().toString(36); state.collections.push(col); }
       save(); closeSheet();
       go(`#/c/${encodeURIComponent(col.id)}`, !isNew);
@@ -639,9 +659,9 @@ function importNames(col) {
         if (!n || !name) continue;
         const cur = card(col.id, n);
         const patch = {};
-        if (over || !cur.name) patch.name = name.trim();
+        if (over || !nameOf(col.id, n)) patch.name = name.trim();
         const r = rarity && window.RARITIES.find((x) => x.toLowerCase() === rarity.trim().toLowerCase());
-        if (r && (over || !cur.rarity)) patch.rarity = r;
+        if (r && (over || !rarityOf(col.id, n))) patch.rarity = r;
         if (Object.keys(patch).length) { setCard(col.id, n, patch); count++; }
         maxNum = Math.max(maxNum, n);
       }
@@ -658,7 +678,8 @@ async function shareList(col, kind) {
   if (!nums.length) { toast(kind === 'missing' ? 'Aucune carte manquante, bravo !' : 'Aucun double'); return; }
   const lines = nums.map((n) => {
     const c = card(col.id, n);
-    return `${pad(n, col.size)}/${col.size}${c.name ? ' ' + c.name : ''}${kind === 'doubles' ? ` (×${c.qty - 1})` : ''}`;
+    const name = nameOf(col.id, n);
+    return `${pad(n, col.size)}/${col.size}${name ? ' ' + name : ''}${kind === 'doubles' ? ` (×${c.qty - 1})` : ''}`;
   });
   const title = `${kind === 'missing' ? 'Cartes manquantes' : 'Doubles à échanger'} : ${col.game} ${col.name}`;
   const text = `${title} (${nums.length})\n${lines.join('\n')}`;
@@ -740,6 +761,9 @@ function showAbout() {
     <p class="help">Krosmodex est un classeur de collection pour les cartes <b>Wakfu TCG</b> (Ankama, avec Upper Deck pour les premières éditions)
       et toutes vos autres cartes Ankama / Upper Deck. Les ${window.BUILTIN_SETS.length} extensions officielles sont préchargées ;
       ajoutez vos propres collections avec « Nouvelle collection ».</p>
+    <p class="help">Noms, types et raretés des cartes : encyclopédie Wakfu TCG de
+      <a href="https://nokazu.fr/encyclopedie/krosllection/wakfu_tcg" target="_blank" rel="noopener">Nokazu</a>.
+      Vous pouvez corriger un nom dans la fiche d'une carte.</p>
     <p class="help"><b>Astuces</b> : touchez une carte pour ouvrir sa fiche ; activez <b>⚡ +1</b> pour ajouter vos cartes à la chaîne
       (appui long = fiche) ; balayez à gauche / à droite pour tourner les pages du classeur.</p>
     <p class="help">${totalCards} carte${totalCards > 1 ? 's' : ''} enregistrée${totalCards > 1 ? 's' : ''} · données stockées uniquement sur cet appareil.</p>

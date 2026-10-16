@@ -1,7 +1,7 @@
 // Service worker Krosmodex : garde l'appli en cache pour qu'elle s'ouvre sans réseau.
 // Changer VERSION à chaque publication pour que les iPhone récupèrent la nouvelle version.
-const VERSION = 'krosmodex-1';
-const FILES = ['./', 'index.html', 'style.css', 'app.js', 'sets.js', 'manifest.json',
+const VERSION = 'krosmodex-2';
+const FILES = ['./', 'index.html', 'style.css', 'app.js', 'sets.js', 'cards.js', 'manifest.json',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
