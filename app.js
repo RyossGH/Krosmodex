@@ -282,7 +282,9 @@ function renderSearch(q) {
 
 let current = null; // { col, filter, page, items }
 
-function filteredNums(col, filter, q) {
+const TYPE_ORDER = ['Héros', 'Havre Sac', 'Allié', 'Protecteur', 'Action', 'Équipement', 'Zone', 'Salle', 'Promo', 'Jeton', 'Carte kama'];
+
+function filteredNums(col, filter, q, rarity, type) {
   const nums = [];
   q = (q || '').toLowerCase();
   for (let n = 1; n <= col.size; n++) {
@@ -292,6 +294,8 @@ function filteredNums(col, filter, q) {
     if (filter === 'missing' && qty) continue;
     if (filter === 'doubles' && qty < 2) continue;
     if (filter === 'wanted' && !c.want) continue;
+    if (rarity && rarityOf(col.id, n) !== rarity) continue;
+    if (type && info(col.id, n)[1] !== type) continue;
     if (q && !nameOf(col.id, n).toLowerCase().includes(q) && String(n) !== q && pad(n, col.size) !== q) continue;
     nums.push(n);
   }
@@ -303,13 +307,38 @@ function renderCollection(col, params) {
   setHeader(col.name, `${s.owned}/${col.size} · ${s.pct} %`, true);
   const filter = params.get('f') || 'all';
   const q = params.get('q') || '';
-  const items = filteredNums(col, filter, q);
+  const rarity = params.get('r') || '';
+  const type = params.get('t') || '';
+  const items = filteredNums(col, filter, q, rarity, type);
   const mode = state.prefs.mode;
   const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
   let page = Math.min(pages, Math.max(1, +params.get('p') || 1));
   const focus = +params.get('n') || 0;
   if (focus && items.includes(focus)) page = Math.floor(items.indexOf(focus) / PAGE_SIZE) + 1;
-  current = { col, filter, q, page, pages, items };
+  current = { col, filter, q, rarity, type, page, pages, items };
+
+  // listes déroulantes rareté / type, avec le nombre de cartes possédées / total
+  const counts = (fn) => {
+    const m = new Map();
+    for (let n = 1; n <= col.size; n++) {
+      const k = fn(n);
+      if (!k) continue;
+      const e = m.get(k) || [0, 0];
+      e[1]++; if (card(col.id, n).qty) e[0]++;
+      m.set(k, e);
+    }
+    return m;
+  };
+  const rarities = counts((n) => rarityOf(col.id, n));
+  const types = counts((n) => info(col.id, n)[1]);
+  const select = (id, all, map, order, val) => (map.size < 2 && !val ? '' : `
+    <select id="${id}" class="input select-filter ${val ? 'on' : ''}">
+      <option value="">${all}</option>
+      ${[...map.keys()].sort((a, b) => order.indexOf(a) - order.indexOf(b))
+        .map((k) => `<option value="${esc(k)}" ${k === val ? 'selected' : ''}>${esc(k)} · ${map.get(k)[0]}/${map.get(k)[1]}</option>`).join('')}
+    </select>`);
+  const selects = select('f-rarity', 'Toutes les raretés', rarities, window.RARITIES, rarity)
+    + select('f-type', 'Tous les types', types, TYPE_ORDER, type);
 
   const chip = (f, label) => `<button class="chip ${filter === f ? 'on' : ''}" data-filter="${f}">${label}</button>`;
   const shown = mode === 'binder' ? items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) : items;
@@ -321,6 +350,7 @@ function renderCollection(col, params) {
       <div class="chips">
         ${chip('all', 'Toutes')}${chip('owned', `Possédées ${s.owned}`)}${chip('missing', `Manquantes ${col.size - s.owned}`)}${chip('doubles', `Doubles ${s.doubles}`)}${chip('wanted', '★ Recherchées')}
       </div>
+      ${selects ? `<div class="filters">${selects}</div>` : ''}
       <div class="toolbar">
         <input id="col-search" type="search" placeholder="N° ou nom…" value="${esc(q)}" autocomplete="off">
         <button class="tool ${state.prefs.quick ? 'on' : ''}" id="btn-quick" title="Ajout rapide : un toucher = +1">⚡ +1</button>
@@ -406,10 +436,12 @@ function refreshSlot(n) {
 }
 
 function colHash(patch) {
-  const p = { f: current.filter, q: current.q, p: current.page, ...patch };
+  const p = { f: current.filter, q: current.q, r: current.rarity, t: current.type, p: current.page, ...patch };
   const qs = new URLSearchParams();
   if (p.f && p.f !== 'all') qs.set('f', p.f);
   if (p.q) qs.set('q', p.q);
+  if (p.r) qs.set('r', p.r);
+  if (p.t) qs.set('t', p.t);
   if (p.p > 1) qs.set('p', p.p);
   const str = qs.toString();
   return `#/c/${encodeURIComponent(current.col.id)}${str ? '?' + str : ''}`;
@@ -418,6 +450,8 @@ function colHash(patch) {
 function bindCollection() {
   const col = current.col;
   document.querySelectorAll('[data-filter]').forEach((b) => { b.onclick = () => go(colHash({ f: b.dataset.filter, p: 1 }), true); });
+  if ($('#f-rarity')) $('#f-rarity').onchange = (e) => go(colHash({ r: e.target.value, p: 1 }), true);
+  if ($('#f-type')) $('#f-type').onchange = (e) => go(colHash({ t: e.target.value, p: 1 }), true);
   const search = $('#col-search');
   search.onchange = () => go(colHash({ q: search.value.trim(), p: 1 }), true);
   search.onkeydown = (e) => { if (e.key === 'Enter') search.blur(); };

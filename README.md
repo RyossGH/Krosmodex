@@ -14,7 +14,7 @@ Pas d'App Store, pas de Mac : elle s'installe depuis Safari et fonctionne **hors
 - **Fiche carte** : nom, exemplaires, brillantes ✦, rareté, état, note, « je la recherche ★ »
   et **photo prise avec l'appareil photo** (elle remplace le dos de la pochette).
 - **Ajout rapide ⚡ +1** : un toucher = +1 exemplaire (avec « Annuler »), appui long = fiche.
-- Filtres possédées / manquantes / doubles / recherchées, recherche par numéro ou par nom (dans une extension ou partout).
+- Filtres possédées / manquantes / doubles / recherchées, **par rareté et par type** (Héros, Allié, Action, Équipement, Salle, Zone…), recherche par numéro ou par nom (dans une extension ou partout).
 - **Import de noms** par copier-coller (`numéro ; nom ; rareté`) pour les collections personnalisées.
 - **Partage** de la liste des manquantes et des doubles (Messages, Discord…).
 - **Sauvegarde / restauration** dans un fichier `.json` (photos comprises), via le menu Partager de l'iPhone.
