@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Krosmodex</title>
+  <meta name="description" content="Classeur de collection pour les cartes Wakfu TCG et les jeux de cartes Ankama / Upper Deck">
+  <meta name="theme-color" content="#14121c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Krosmodex">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn" id="btn-back" aria-label="Retour" hidden>‹</button>
+    <div class="topbar-title">
+      <h1 id="title">Krosmodex</h1>
+      <div class="sub" id="subtitle">Ma collection</div>
+    </div>
+    <button class="icon-btn" id="btn-menu" aria-label="Menu">⋯</button>
+  </header>
+
+  <main id="view"></main>
+
+  <div class="sheet-backdrop" id="backdrop" hidden></div>
+  <section class="sheet" id="sheet" hidden aria-modal="true" role="dialog"></section>
+  <div class="toast" id="toast" hidden></div>
+
+  <input type="file" id="file-photo" accept="image/*" capture="environment" hidden>
+  <input type="file" id="file-backup" accept="application/json,.json" hidden>
+
+  <script src="sets.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
