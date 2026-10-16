@@ -5,7 +5,7 @@ Pas d'App Store, pas de Mac : elle s'installe depuis Safari et fonctionne **hors
 
 ## Fonctions
 
-- **Toutes les cartes Wakfu TCG préremplies** (nom, type, rareté) : Incarnam (320), Astrub (162), Amakna (162),
+- **Toutes les cartes Wakfu TCG préremplies** (nom, type, rareté, et l'image de 1 514 cartes) : Incarnam (320), Astrub (162), Amakna (162),
   Bonta & Brâkmar (320), Pandala (162), Otomaï (162), Le Chaos d'Ogrest (162), Dofus Collection (100),
   Promos & tournois (198), Jetons & cartes spéciales (12), Cartes Kama (317). L'Île des Wabbits (30) est à remplir à la main.
 - **Collections personnalisées** pour tout le reste (Dofus, Krosmaster, autres cartes Upper Deck…) : nom, gamme, nombre de cartes.
@@ -19,8 +19,10 @@ Pas d'App Store, pas de Mac : elle s'installe depuis Safari et fonctionne **hors
 - **Partage** de la liste des manquantes et des doubles (Messages, Discord…).
 - **Sauvegarde / restauration** dans un fichier `.json` (photos comprises), via le menu Partager de l'iPhone.
 
-Les noms, types et raretés viennent de l'encyclopédie Wakfu TCG de [Nokazu](https://nokazu.fr/encyclopedie/krosllection/wakfu_tcg)
-(fichier `cards.js`, généré). Un nom peut être corrigé dans la fiche de la carte, sans toucher au catalogue.
+Les noms, types, raretés et images viennent de l'encyclopédie Wakfu TCG de [Nokazu](https://nokazu.fr/encyclopedie/krosllection/wakfu_tcg)
+(fichier `cards.js`, généré). Les images ne sont pas copiées dans ce dépôt : elles s'affichent depuis nokazu.fr, au fur et à mesure,
+et les 800 dernières vues sont gardées sur le téléphone pour le mode hors ligne. Elles se désactivent dans le menu ⋯ (économie de données).
+Un nom peut être corrigé dans la fiche de la carte, et l'image remplacée par sa propre photo.
 
 ## Installation sur iPhone
 

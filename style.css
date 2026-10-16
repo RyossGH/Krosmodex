@@ -154,6 +154,8 @@ input[type=search], .input {
 .slot.focus { outline: 3px solid #fff; outline-offset: 2px; }
 .slot-art { position: absolute; inset: 0; background-size: cover; background-position: center; }
 .slot.missing.has-photo .slot-art { filter: grayscale(1) brightness(.55); }
+.slot.catalog .slot-art { background-size: cover; }
+.slot.catalog { background: #0f0d16; }
 .slot-num {
   position: absolute; top: 6px; left: 0; right: 0; text-align: center;
   font-weight: 800; font-size: 17px; letter-spacing: .02em; color: var(--text);
@@ -214,6 +216,12 @@ input[type=search], .input {
   background: var(--card) center / cover no-repeat; padding: 0;
 }
 .card-photo.empty { border: 2px dashed var(--line); color: var(--muted); font-size: 14px; }
+.card-photo { position: relative; overflow: hidden; }
+.card-photo.catalog.missing { filter: grayscale(.85) brightness(.75); }
+.photo-badge {
+  position: absolute; left: 6px; bottom: 6px; padding: 3px 8px; border-radius: 99px;
+  background: rgba(0, 0, 0, .7); color: #fff; font-size: 12px;
+}
 .card-fields { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .card-num { font-size: 13px; color: var(--muted); }
 .card-num b { color: var(--text); font-size: 15px; }
@@ -247,3 +255,4 @@ textarea.input { resize: vertical; margin-top: 4px; }
   box-shadow: 0 8px 30px rgba(0, 0, 0, .4);
 }
 .toast button { border: 0; background: none; color: #7a4fd1; font-weight: 800; padding: 0; }
+.binder.mode-grid .slot.has-photo .slot-num { font-size: 9px; padding: 0 4px; }

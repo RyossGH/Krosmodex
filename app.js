@@ -40,7 +40,7 @@ let state = null;
 let saveTimer = null;
 
 function defaultState() {
-  return { version: 1, collections: [], cards: {}, prefs: { mode: 'binder', quick: false } };
+  return { version: 1, collections: [], cards: {}, prefs: { mode: 'binder', quick: false, images: true } };
 }
 
 function syncBuiltins() {
@@ -73,8 +73,9 @@ function save() {
 const key = (colId, num) => `${colId}:${num}`;
 const card = (colId, num) => state.cards[key(colId, num)] || {};
 const getCol = (id) => state.collections.find((c) => c.id === id);
-// fiche du catalogue : [nom, type, rareté, note]
+// fiche du catalogue : [nom, type, rareté, image, note]
 const info = (colId, num) => ((window.CARD_DATA || {})[colId] || [])[num - 1] || [];
+const catalogImg = (colId, num) => (state.prefs.images && info(colId, num)[3] ? window.IMAGE_BASE + info(colId, num)[3] : null);
 const nameOf = (colId, num) => card(colId, num).name || info(colId, num)[0] || '';
 const rarityOf = (colId, num) => card(colId, num).rarity || info(colId, num)[2] || '';
 const RARITY_CLASS = { Commune: 'r-c', 'Peu commune': 'r-pc', Rare: 'r-r', Draconique: 'r-d', Promo: 'r-p' };
@@ -350,7 +351,7 @@ function slotHtml(col, n, focus) {
   const type = info(col.id, n)[1];
   const rc = RARITY_CLASS[rarityOf(col.id, n)];
   return `
-    <button class="slot ${qty ? 'own' : 'missing'} ${c.foil ? 'foil' : ''} ${focus ? 'focus' : ''}" data-num="${n}" ${c.photo ? 'data-photo="1"' : ''}>
+    <button class="slot ${qty ? 'own' : 'missing'} ${c.foil ? 'foil' : ''} ${focus ? 'focus' : ''}" data-num="${n}" ${c.photo ? 'data-photo="1"' : catalogImg(col.id, n) ? `data-img="${esc(catalogImg(col.id, n))}"` : ''}>
       <span class="slot-art"></span>
       <span class="slot-num">${pad(n, col.size)}</span>
       ${type || rc ? `<span class="slot-type">${rc ? `<i class="gem ${rc}" title="${esc(rarityOf(col.id, n))}"></i>` : ''}${esc(type || '')}</span>` : ''}
@@ -361,12 +362,32 @@ function slotHtml(col, n, focus) {
     </button>`;
 }
 
-async function loadSlotPhotos() {
-  const col = current.col;
-  for (const el of document.querySelectorAll('.slot[data-photo]')) {
-    const url = await photoUrl(col.id, +el.dataset.num);
-    if (url) { el.querySelector('.slot-art').style.backgroundImage = `url("${url}")`; el.classList.add('has-photo'); }
+// images chargées seulement quand la pochette devient visible (la vue grille en affiche des centaines)
+let slotObserver = null;
+
+async function showSlotArt(el) {
+  let url = el.dataset.img;
+  if (el.dataset.photo) url = await photoUrl(current.col.id, +el.dataset.num);
+  if (!url) return;
+  const art = el.querySelector('.slot-art');
+  if (el.dataset.img) {
+    const img = new Image();
+    img.onload = () => { art.style.backgroundImage = `url("${url}")`; el.classList.add('has-photo', 'catalog'); };
+    img.src = url; // en cas d'échec (hors ligne), la pochette garde son numéro et son nom
+  } else {
+    art.style.backgroundImage = `url("${url}")`;
+    el.classList.add('has-photo');
   }
+}
+
+function loadSlotPhotos() {
+  if (slotObserver) slotObserver.disconnect();
+  const els = document.querySelectorAll('.slot[data-photo]:not(.has-photo), .slot[data-img]:not(.has-photo)');
+  if (!('IntersectionObserver' in window)) { els.forEach(showSlotArt); return; }
+  slotObserver = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { slotObserver.unobserve(e.target); showSlotArt(e.target); }
+  }, { rootMargin: '300px 0px' });
+  els.forEach((el) => slotObserver.observe(el));
 }
 
 function refreshSlot(n) {
@@ -458,13 +479,13 @@ function bindCollection() {
 
 async function openCard(col, n) {
   const c = card(col.id, n);
-  const [baseName, baseType, baseRarity, baseNote] = info(col.id, n);
-  const url = c.photo ? await photoUrl(col.id, n) : null;
+  const [baseName, baseType, baseRarity, , baseNote] = info(col.id, n);
+  const url = c.photo ? await photoUrl(col.id, n) : catalogImg(col.id, n);
   const opts = (list, val) => `<option value="">—</option>${list.map((v) => `<option ${v === val ? 'selected' : ''}>${esc(v)}</option>`).join('')}`;
   openSheet(`
     <div class="card-sheet">
-      <button class="card-photo ${url ? '' : 'empty'}" id="cs-photo" style="${url ? `background-image:url('${url}')` : ''}">
-        ${url ? '' : '<span>📷<br>Prendre la carte<br>en photo</span>'}
+      <button class="card-photo ${url ? '' : 'empty'} ${c.photo ? '' : 'catalog'} ${card(col.id, n).qty ? '' : 'missing'}" id="cs-photo" style="${url ? `background-image:url('${url}')` : ''}">
+        ${url ? `<span class="photo-badge">📷 ${c.photo ? 'Changer' : 'Ma photo'}</span>` : '<span>📷<br>Prendre la carte<br>en photo</span>'}
       </button>
       <div class="card-fields">
         <div class="card-num">${esc(col.name)} · <b>${pad(n, col.size)}/${col.size}</b></div>
@@ -547,6 +568,7 @@ function openMenu() {
     <div class="menu">
       <button data-act="new">＋ Nouvelle collection</button>
       <button data-act="visible">👁 Extensions affichées</button>
+      <button data-act="images">🖼 Images des cartes : ${state.prefs.images ? 'affichées' : 'masquées'}</button>
       <button data-act="export">💾 Sauvegarder ma collection</button>
       <button data-act="import">📥 Restaurer une sauvegarde</button>
       <button data-act="install">📲 Installer sur l'iPhone</button>
@@ -558,6 +580,7 @@ function openMenu() {
       closeSheet();
       setTimeout(() => ({
         new: () => editCollection(null), visible: chooseVisible, export: exportBackup,
+        images: () => { state.prefs.images = !state.prefs.images; save(); toast(state.prefs.images ? 'Images des cartes affichées' : 'Images masquées (économise les données)'); },
         import: importBackup, install: showInstallHelp, about: showAbout,
       })[act](), 220);
     };
@@ -761,9 +784,10 @@ function showAbout() {
     <p class="help">Krosmodex est un classeur de collection pour les cartes <b>Wakfu TCG</b> (Ankama, avec Upper Deck pour les premières éditions)
       et toutes vos autres cartes Ankama / Upper Deck. Les ${window.BUILTIN_SETS.length} extensions officielles sont préchargées ;
       ajoutez vos propres collections avec « Nouvelle collection ».</p>
-    <p class="help">Noms, types et raretés des cartes : encyclopédie Wakfu TCG de
-      <a href="https://nokazu.fr/encyclopedie/krosllection/wakfu_tcg" target="_blank" rel="noopener">Nokazu</a>.
-      Vous pouvez corriger un nom dans la fiche d'une carte.</p>
+    <p class="help">Noms, types, raretés et images des cartes : encyclopédie Wakfu TCG de
+      <a href="https://nokazu.fr/encyclopedie/krosllection/wakfu_tcg" target="_blank" rel="noopener">Nokazu</a>
+      (images affichées depuis leur site). Vous pouvez corriger un nom dans la fiche d'une carte,
+      ou remplacer l'image par votre propre photo.</p>
     <p class="help"><b>Astuces</b> : touchez une carte pour ouvrir sa fiche ; activez <b>⚡ +1</b> pour ajouter vos cartes à la chaîne
       (appui long = fiche) ; balayez à gauche / à droite pour tourner les pages du classeur.</p>
     <p class="help">${totalCards} carte${totalCards > 1 ? 's' : ''} enregistrée${totalCards > 1 ? 's' : ''} · données stockées uniquement sur cet appareil.</p>
