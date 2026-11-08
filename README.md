@@ -16,6 +16,8 @@ Pas d'App Store, pas de Mac : elle s'installe depuis Safari et fonctionne **hors
 - **Ajout rapide ⚡ +1** : un toucher = +1 exemplaire (avec « Annuler »), appui long = fiche.
 - Filtres possédées / manquantes / doubles / recherchées, **par rareté et par type** (Héros, Allié, Action, Équipement, Salle, Zone…), recherche par numéro ou par nom (dans une extension ou partout).
 - **Import de noms** par copier-coller (`numéro ; nom ; rareté`) pour les collections personnalisées.
+- **Prix** : prix saisi par carte ou prix moyen par rareté, valeur estimée de la collection (accueil et chaque extension),
+  liens directs vers les ventes réussies eBay, eBay et Vinted depuis la fiche (il n'existe pas de cote en ligne pour Wakfu TCG).
 - **Partage** de la liste des manquantes et des doubles (Messages, Discord…).
 - **Sauvegarde / restauration** dans un fichier `.json` (photos comprises), via le menu Partager de l'iPhone.
 

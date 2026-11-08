@@ -40,7 +40,7 @@ let state = null;
 let saveTimer = null;
 
 function defaultState() {
-  return { version: 1, collections: [], cards: {}, prefs: { mode: 'binder', quick: false, images: true } };
+  return { version: 1, collections: [], cards: {}, prefs: { mode: 'binder', quick: false, images: true, rarityPrices: {} } };
 }
 
 function syncBuiltins() {
@@ -78,6 +78,15 @@ const info = (colId, num) => ((window.CARD_DATA || {})[colId] || [])[num - 1] ||
 const catalogImg = (colId, num) => (state.prefs.images && info(colId, num)[3] ? window.IMAGE_BASE + info(colId, num)[3] : null);
 const nameOf = (colId, num) => card(colId, num).name || info(colId, num)[0] || '';
 const rarityOf = (colId, num) => card(colId, num).rarity || info(colId, num)[2] || '';
+// prix : celui saisi sur la carte, sinon le prix par défaut de sa rareté (estimation)
+const euro = (v) => v.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+const parsePrice = (s) => { const v = parseFloat(String(s).replace(',', '.').replace(/[^\d.]/g, '')); return Number.isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : 0; };
+function priceOf(colId, num) {
+  const own = card(colId, num).price;
+  if (own) return { value: own, estimated: false };
+  const def = (state.prefs.rarityPrices || {})[rarityOf(colId, num)];
+  return def ? { value: def, estimated: true } : { value: 0, estimated: true };
+}
 const RARITY_CLASS = { Commune: 'r-c', 'Peu commune': 'r-pc', Rare: 'r-r', Draconique: 'r-d', Promo: 'r-p' };
 
 function setCard(colId, num, patch) {
@@ -89,14 +98,14 @@ function setCard(colId, num, patch) {
 }
 
 function colStats(col) {
-  let owned = 0, total = 0, doubles = 0;
+  let owned = 0, total = 0, doubles = 0, value = 0;
   for (let n = 1; n <= col.size; n++) {
     const q = card(col.id, n).qty || 0;
-    if (q > 0) owned++;
+    if (q > 0) { owned++; value += q * priceOf(col.id, n).value; }
     total += q;
     if (q > 1) doubles += q - 1;
   }
-  return { owned, total, doubles, pct: col.size ? Math.round((owned / col.size) * 100) : 0 };
+  return { owned, total, doubles, value, pct: col.size ? Math.round((owned / col.size) * 100) : 0 };
 }
 
 // ---------- Photos ----------
@@ -211,8 +220,8 @@ function renderHome(params) {
   setHeader('Krosmodex', 'Ma collection', false);
   const q = (params.get('q') || '').trim();
   const visible = state.collections.filter((c) => !c.hidden);
-  let owned = 0, size = 0, total = 0;
-  for (const c of visible) { const s = colStats(c); owned += s.owned; size += c.size; total += s.total; }
+  let owned = 0, size = 0, total = 0, value = 0;
+  for (const c of visible) { const s = colStats(c); owned += s.owned; size += c.size; total += s.total; value += s.value; }
   const pct = size ? Math.round((owned / size) * 100) : 0;
 
   const groups = {};
@@ -224,6 +233,7 @@ function renderHome(params) {
       <div class="hero-label">cartes différentes · ${total} au total</div>
       ${progressBar(pct)}
       <div class="hero-pct">${pct} % du Krosmoz complété</div>
+      <button class="hero-value" id="btn-prices">💶 ${value ? `Valeur estimée : <b>${euro(value)}</b>` : 'Ajouter des prix'}</button>
     </section>
     <div class="search"><input id="home-search" type="search" placeholder="Rechercher une carte par nom…" value="${esc(q)}" autocomplete="off"></div>
     <div id="search-results"></div>`;
@@ -254,6 +264,7 @@ function renderHome(params) {
   input.oninput = () => { renderSearch(input.value); history.replaceState(null, '', input.value ? `#/?q=${encodeURIComponent(input.value)}` : '#/'); };
   if (q) renderSearch(q);
   $('#btn-new-col').onclick = () => editCollection(null);
+  $('#btn-prices').onclick = editRarityPrices;
   $('#btn-export').onclick = exportBackup;
   $('#btn-import').onclick = importBackup;
   if ($('#btn-install')) $('#btn-install').onclick = showInstallHelp;
@@ -308,9 +319,11 @@ function filteredNums(col, filter, q, rarity, type) {
   return nums;
 }
 
+const colSubtitle = (col, s) => `${s.owned}/${col.size} · ${s.pct} %${s.value ? ` · ${euro(s.value)}` : ''}`;
+
 function renderCollection(col, params) {
   const s = colStats(col);
-  setHeader(col.name, `${s.owned}/${col.size} · ${s.pct} %`, true);
+  setHeader(col.name, colSubtitle(col, s), true);
   const filter = params.get('f') || 'all';
   const q = params.get('q') || '';
   const rarity = params.get('r') || '';
@@ -393,6 +406,7 @@ function slotHtml(col, n, focus) {
       ${type || rc ? `<span class="slot-type">${rc ? `<i class="gem ${rc}" title="${esc(rarityOf(col.id, n))}"></i>` : ''}${esc(type || '')}</span>` : ''}
       ${name ? `<span class="slot-name">${esc(name)}</span>` : ''}
       ${qty > 1 ? `<span class="slot-qty">×${qty}</span>` : ''}
+      ${c.price ? `<span class="slot-price">${euro(c.price)}</span>` : ''}
       ${c.want && !qty ? '<span class="slot-want">★</span>' : ''}
       ${c.foil ? '<span class="slot-foil">✦</span>' : ''}
     </button>`;
@@ -434,7 +448,7 @@ function refreshSlot(n) {
   el.replaceWith(tmp.firstChild);
   loadSlotPhotos();
   const s = colStats(current.col);
-  $('#subtitle').textContent = `${s.owned}/${current.col.size} · ${s.pct} %`;
+  $('#subtitle').textContent = colSubtitle(current.col, s);
   $('.col-head .progress > div').style.width = `${s.pct}%`;
   $('[data-filter="owned"]').textContent = `Possédées ${s.owned}`;
   $('[data-filter="missing"]').textContent = `Manquantes ${current.col.size - s.owned}`;
@@ -517,6 +531,14 @@ function bindCollection() {
 
 // ---------- Fiche d'une carte ----------
 
+// recherches de prix : annonces vendues sur eBay (les vrais prix), annonces en cours, Vinted
+function priceSearch(col, n, where) {
+  const q = encodeURIComponent(`wakfu ${nameOf(col.id, n) || col.name + ' ' + n}`);
+  if (where === 'sold') return `https://www.ebay.fr/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1`;
+  if (where === 'ebay') return `https://www.ebay.fr/sch/i.html?_nkw=${q}`;
+  return `https://www.vinted.fr/catalog?search_text=${q}`;
+}
+
 async function openCard(col, n) {
   const c = card(col.id, n);
   const [baseName, baseType, baseRarity, , baseNote] = info(col.id, n);
@@ -545,6 +567,16 @@ async function openCard(col, n) {
       <label>Rareté<select id="cs-rarity" class="input">${opts(window.RARITIES, rarityOf(col.id, n))}</select></label>
       <label>État<select id="cs-cond" class="input">${opts(window.CONDITIONS, c.cond)}</select></label>
     </div>
+    <div class="price-row">
+      <label>Prix (€)<input id="cs-price" class="input" inputmode="decimal" autocomplete="off" value="${c.price ? String(c.price).replace('.', ',') : ''}"
+        placeholder="${priceOf(col.id, n).value ? `≈ ${euro(priceOf(col.id, n).value)} (rareté)` : 'ex. 2,50'}"></label>
+      <div class="price-links">
+        <span>Voir les prix :</span>
+        <a href="${priceSearch(col, n, 'sold')}" target="_blank" rel="noopener">eBay vendues</a>
+        <a href="${priceSearch(col, n, 'ebay')}" target="_blank" rel="noopener">eBay</a>
+        <a href="${priceSearch(col, n, 'vinted')}" target="_blank" rel="noopener">Vinted</a>
+      </div>
+    </div>
     <label class="check"><input type="checkbox" id="cs-want" ${c.want ? 'checked' : ''}> ★ Je la recherche</label>
     <textarea id="cs-note" class="input" rows="2" placeholder="Note (langue, échange, prix…)">${esc(c.note || '')}</textarea>
     <div class="sheet-actions">
@@ -558,6 +590,7 @@ async function openCard(col, n) {
       name: $('#cs-name').value.trim() === (baseName || '') ? '' : $('#cs-name').value.trim(),
       rarity: $('#cs-rarity').value === (baseRarity || '') ? '' : $('#cs-rarity').value,
       cond: $('#cs-cond').value,
+      price: parsePrice($('#cs-price').value),
       want: $('#cs-want').checked,
       note: $('#cs-note').value.trim(),
     });
@@ -608,6 +641,7 @@ function openMenu() {
     <div class="menu">
       <button data-act="new">＋ Nouvelle collection</button>
       <button data-act="visible">👁 Extensions affichées</button>
+      <button data-act="prices">💶 Prix par rareté</button>
       <button data-act="images">🖼 Images des cartes : ${state.prefs.images ? 'affichées' : 'masquées'}</button>
       <button data-act="export">💾 Sauvegarder / transférer ma collection</button>
       <button data-act="import">📥 Restaurer une sauvegarde</button>
@@ -620,6 +654,7 @@ function openMenu() {
       closeSheet();
       setTimeout(() => ({
         new: () => editCollection(null), visible: chooseVisible, export: exportBackup,
+        prices: editRarityPrices,
         images: () => { state.prefs.images = !state.prefs.images; save(); toast(state.prefs.images ? 'Images des cartes affichées' : 'Images masquées (économise les données)'); },
         import: importBackup, install: showInstallHelp, about: showAbout,
       })[act](), 220);
@@ -691,6 +726,26 @@ function editCollection(col) {
   });
 }
 
+function editRarityPrices() {
+  const rp = state.prefs.rarityPrices || {};
+  openSheet(`
+    <h3>Prix par rareté</h3>
+    <p class="help">Il n'existe pas de cote officielle pour Wakfu TCG. Indiquez un prix moyen par rareté :
+      il sert d'estimation pour toutes les cartes sans prix. Un prix saisi dans la fiche d'une carte reste prioritaire
+      (bouton « eBay vendues » dans la fiche pour voir les vrais prix de vente).</p>
+    <div class="form-grid">
+      ${window.RARITIES.map((r) => `<label>${esc(r)}<input class="input" inputmode="decimal" data-rarity="${esc(r)}"
+        value="${rp[r] ? String(rp[r]).replace('.', ',') : ''}" placeholder="0,00 €"></label>`).join('')}
+    </div>
+    <button class="btn-wide" id="rp-ok">Enregistrer</button>`, (sheet) => {
+    $('#rp-ok').onclick = () => {
+      const out = {};
+      sheet.querySelectorAll('[data-rarity]').forEach((i) => { const v = parsePrice(i.value); if (v) out[i.dataset.rarity] = v; });
+      state.prefs.rarityPrices = out; save(); closeSheet(); route();
+    };
+  });
+}
+
 function chooseVisible() {
   openSheet(`
     <h3>Extensions affichées</h3>
@@ -746,7 +801,8 @@ async function shareList(col, kind) {
   const lines = nums.map((n) => {
     const c = card(col.id, n);
     const name = nameOf(col.id, n);
-    return `${pad(n, col.size)}/${col.size}${name ? ' ' + name : ''}${kind === 'doubles' ? ` (×${c.qty - 1})` : ''}`;
+    const pr = priceOf(col.id, n).value;
+    return `${pad(n, col.size)}/${col.size}${name ? ' ' + name : ''}${kind === 'doubles' ? ` (×${c.qty - 1})` : ''}${pr ? ` – ${euro(pr)}` : ''}`;
   });
   const title = `${kind === 'missing' ? 'Cartes manquantes' : 'Doubles à échanger'} : ${col.game} ${col.name}`;
   const text = `${title} (${nums.length})\n${lines.join('\n')}`;
